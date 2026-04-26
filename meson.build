@@ -1,5 +1,6 @@
-project('codex-tracker', 'vala', 'c',
+project('codex-multi-account-switcher', 'vala', 'c',
   version: '0.1.0',
+  license: 'MIT',
   meson_version: '>= 0.59.0',
 )
 
@@ -29,8 +30,13 @@ sources = files(
   'src/account_store.vala',
 )
 
-executable('codex-tracker',
+executable('codex-multi-account-switcher',
   sources,
   dependencies: dependencies,
   install: true,
+)
+
+install_data(
+  'data/io.github.jR4dh3y.CodexMultiAccountSwitcher.desktop',
+  install_dir: join_paths(get_option('datadir'), 'applications'),
 )

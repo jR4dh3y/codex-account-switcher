@@ -105,7 +105,7 @@ namespace CodexTracker {
         public GenericArray<AccountData> accounts { get; private set; }
 
         public AccountStore () {
-            config_dir = Path.build_filename (Environment.get_user_config_dir (), "codex-tracker");
+            config_dir = Path.build_filename (Environment.get_user_config_dir (), "codex-multi-account-switcher");
             config_file = Path.build_filename (config_dir, "accounts.json");
             accounts = new GenericArray<AccountData> ();
         }

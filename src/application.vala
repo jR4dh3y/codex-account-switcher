@@ -5,7 +5,7 @@ namespace CodexTracker {
     public class Application : Adw.Application {
         public Application () {
             Object (
-                application_id: "com.github.codex-tracker",
+                application_id: "io.github.jR4dh3y.CodexMultiAccountSwitcher",
                 flags: ApplicationFlags.FLAGS_NONE
             );
         }

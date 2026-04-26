@@ -14,7 +14,7 @@ namespace CodexTracker {
         public MainWindow (Gtk.Application app) {
             Object (
                 application: app,
-                title: "Codex Tracker",
+                title: "Codex Multi-Account Switcher",
                 default_width: 960,
                 default_height: 540
             );
@@ -35,7 +35,7 @@ namespace CodexTracker {
             var headerbar = new Adw.HeaderBar ();
             headerbar.show_title = true;
             headerbar.decoration_layout = "";
-            var title = new Adw.WindowTitle ("Codex Tracker", "%u accounts".printf (store.accounts.length));
+            var title = new Adw.WindowTitle ("Codex Multi-Account Switcher", "%u accounts".printf (store.accounts.length));
             headerbar.title_widget = title;
 
             // Add account button

@@ -82,7 +82,7 @@ namespace CodexTracker {
             // Key params: response_type, client_id, redirect_uri, scope,
             //   code_challenge, code_challenge_method, state,
             //   id_token_add_organizations, codex_cli_simplified_flow, originator
-            string auth_uri = "%s?response_type=code&client_id=%s&redirect_uri=%s&scope=%s&code_challenge=%s&code_challenge_method=S256&state=%s&id_token_add_organizations=true&codex_cli_simplified_flow=true&originator=codex-tracker".printf (
+            string auth_uri = "%s?response_type=code&client_id=%s&redirect_uri=%s&scope=%s&code_challenge=%s&code_challenge_method=S256&state=%s&id_token_add_organizations=true&codex_cli_simplified_flow=true&originator=codex-multi-account-switcher".printf (
                 AUTH_URL,
                 GLib.Uri.escape_string (CLIENT_ID, null, false),
                 GLib.Uri.escape_string (redirect_uri, null, false),
@@ -150,12 +150,12 @@ namespace CodexTracker {
 
                 // Respond to browser
                 string html = auth_code != null
-                    ? """<!DOCTYPE html><html><head><meta charset="utf-8"><title>Codex Tracker</title>
+                    ? """<!DOCTYPE html><html><head><meta charset="utf-8"><title>Codex Multi-Account Switcher</title>
                         <style>body{font-family:system-ui,sans-serif;display:flex;justify-content:center;align-items:center;height:100vh;margin:0;background:#1a1a2e;color:#e0e0e0}.box{text-align:center}h1{color:#2ec27e;font-size:28px}p{color:#9a9996}</style>
-                        </head><body><div class="box"><h1>&#10003; Signed in!</h1><p>Return to Codex Tracker. You can close this tab.</p></div></body></html>"""
-                    : """<!DOCTYPE html><html><head><meta charset="utf-8"><title>Codex Tracker</title>
+                        </head><body><div class="box"><h1>&#10003; Signed in!</h1><p>Return to Codex Multi-Account Switcher. You can close this tab.</p></div></body></html>"""
+                    : """<!DOCTYPE html><html><head><meta charset="utf-8"><title>Codex Multi-Account Switcher</title>
                         <style>body{font-family:system-ui,sans-serif;display:flex;justify-content:center;align-items:center;height:100vh;margin:0;background:#1a1a2e;color:#e0e0e0}.box{text-align:center}h1{color:#e01b24;font-size:28px}p{color:#9a9996}</style>
-                        </head><body><div class="box"><h1>&#10007; Failed</h1><p>Try again from Codex Tracker.</p></div></body></html>""";
+                        </head><body><div class="box"><h1>&#10007; Failed</h1><p>Try again from Codex Multi-Account Switcher.</p></div></body></html>""";
 
                 string http_response = "HTTP/1.1 200 OK\r\nContent-Type: text/html; charset=utf-8\r\nContent-Length: %d\r\nConnection: close\r\n\r\n%s".printf (html.data.length, html);
                 try {

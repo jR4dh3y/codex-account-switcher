@@ -17,7 +17,7 @@ namespace CodexTracker {
             try {
                 var msg = new Soup.Message ("GET", USAGE_URL);
                 msg.request_headers.append ("Authorization", "Bearer %s".printf (account.access_token));
-                msg.request_headers.append ("User-Agent", "codex-tracker/0.1");
+                msg.request_headers.append ("User-Agent", "codex-multi-account-switcher/0.1");
 
                 if (account.account_id != "")
                     msg.request_headers.append ("ChatGPT-Account-Id", account.account_id);

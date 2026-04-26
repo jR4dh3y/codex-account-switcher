@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Codex Multi-Account Switcher
+Comment=Switch between ChatGPT accounts for Codex CLI
+Exec=codex-multi-account-switcher
+Terminal=false
+Categories=Utility;GTK;
+StartupNotify=true
+X-GNOME-UsesNotifications=false
