@@ -84,6 +84,36 @@ namespace CodexTracker {
                 this.account_id = obj.get_string_member ("account_id");
             if (obj.has_member ("plan_type"))
                 this.plan_type = obj.get_string_member ("plan_type");
+            if (obj.has_member ("usage_status"))
+                this.usage_status = obj.get_string_member ("usage_status");
+            if (obj.has_member ("last_checked"))
+                this.last_checked = obj.get_string_member ("last_checked");
+            if (obj.has_member ("usage_raw_json"))
+                this.usage_raw_json = obj.get_string_member ("usage_raw_json");
+            if (obj.has_member ("error_message"))
+                this.error_message = obj.get_string_member ("error_message");
+            if (obj.has_member ("limit_reached"))
+                this.limit_reached = obj.get_boolean_member ("limit_reached");
+            if (obj.has_member ("is_allowed"))
+                this.is_allowed = obj.get_boolean_member ("is_allowed");
+            if (obj.has_member ("usage_windows")) {
+                var windows = obj.get_array_member ("usage_windows");
+                for (uint i = 0; i < windows.get_length (); i++) {
+                    var window_obj = windows.get_object_element (i);
+                    var window = new UsageWindow ();
+                    if (window_obj.has_member ("name"))
+                        window.name = window_obj.get_string_member ("name");
+                    if (window_obj.has_member ("used_percent"))
+                        window.used_percent = window_obj.get_double_member ("used_percent");
+                    if (window_obj.has_member ("limit_window_seconds"))
+                        window.limit_window_seconds = (int) window_obj.get_int_member ("limit_window_seconds");
+                    if (window_obj.has_member ("reset_after_seconds"))
+                        window.reset_after_seconds = (int) window_obj.get_int_member ("reset_after_seconds");
+                    if (window_obj.has_member ("reset_at_epoch"))
+                        window.reset_at_epoch = window_obj.get_int_member ("reset_at_epoch");
+                    usage_windows.add (window);
+                }
+            }
         }
 
         public Json.Object to_json () {
@@ -95,6 +125,28 @@ namespace CodexTracker {
             obj.set_string_member ("id_token", id_token);
             obj.set_string_member ("account_id", account_id);
             obj.set_string_member ("plan_type", plan_type);
+            obj.set_string_member ("usage_status", usage_status);
+            obj.set_string_member ("last_checked", last_checked);
+            obj.set_string_member ("usage_raw_json", usage_raw_json);
+            obj.set_string_member ("error_message", error_message);
+            obj.set_boolean_member ("limit_reached", limit_reached);
+            obj.set_boolean_member ("is_allowed", is_allowed);
+
+            var windows = new Json.Array ();
+            for (uint i = 0; i < usage_windows.length; i++) {
+                var window = usage_windows[i];
+                var window_obj = new Json.Object ();
+                window_obj.set_string_member ("name", window.name);
+                window_obj.set_double_member ("used_percent", window.used_percent);
+                window_obj.set_int_member ("limit_window_seconds", window.limit_window_seconds);
+                window_obj.set_int_member ("reset_after_seconds", window.reset_after_seconds);
+                window_obj.set_int_member ("reset_at_epoch", window.reset_at_epoch);
+
+                var window_node = new Json.Node (Json.NodeType.OBJECT);
+                window_node.set_object (window_obj);
+                windows.add_element (window_node);
+            }
+            obj.set_array_member ("usage_windows", windows);
             return obj;
         }
     }
