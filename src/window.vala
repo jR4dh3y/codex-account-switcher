@@ -6,8 +6,10 @@ namespace CodexTracker {
         private AccountStore store;
         private AuthManager auth_manager;
         private UsageChecker usage_checker;
-        private Gtk.FlowBox flowbox;
+        private Adw.PreferencesPage pref_page;
+        private Adw.PreferencesGroup pref_group;
         private Gtk.Stack main_stack;
+        private AccountRow[] account_rows;
 
         public MainWindow (Gtk.Application app) {
             Object (
@@ -22,7 +24,6 @@ namespace CodexTracker {
             usage_checker = new UsageChecker (auth_manager);
 
             store.load ();
-            load_css ();
             build_ui ();
             populate_cards ();
         }
@@ -38,7 +39,6 @@ namespace CodexTracker {
             // Add account button
             var btn_add = new Gtk.Button.from_icon_name ("list-add-symbolic");
             btn_add.tooltip_text = "Add ChatGPT account";
-            btn_add.add_css_class ("suggested-action");
             btn_add.clicked.connect (on_add_account);
             headerbar.pack_start (btn_add);
 
@@ -67,7 +67,6 @@ namespace CodexTracker {
 
             var empty_btn = new Gtk.Button.with_label ("Add Account");
             empty_btn.add_css_class ("suggested-action");
-            empty_btn.add_css_class ("pill");
             empty_btn.clicked.connect (on_add_account);
             empty_box.append (empty_btn);
 
@@ -79,138 +78,22 @@ namespace CodexTracker {
             empty.child = empty_box;
             main_stack.add_named (empty, "empty");
 
-            // Cards view
-            var scrolled = new Gtk.ScrolledWindow ();
-            scrolled.vexpand = true;
-            scrolled.hscrollbar_policy = Gtk.PolicyType.NEVER;
-
-            flowbox = new Gtk.FlowBox ();
-            flowbox.selection_mode = Gtk.SelectionMode.NONE;
-            flowbox.homogeneous = false;
-            flowbox.min_children_per_line = 1;
-            flowbox.max_children_per_line = 4;
-            flowbox.row_spacing = 4;
-            flowbox.column_spacing = 4;
-            flowbox.margin_start = 16;
-            flowbox.margin_end = 16;
-            flowbox.margin_top = 12;
-            flowbox.margin_bottom = 16;
-
-            scrolled.child = flowbox;
-            main_stack.add_named (scrolled, "cards");
+            // Preferences Page
+            pref_page = new Adw.PreferencesPage ();
+            main_stack.add_named (pref_page, "cards");
 
             box.append (main_stack);
             set_content (box);
         }
 
-        private void load_css () {
-            var css = new Gtk.CssProvider ();
-            var css_data = """
-                .account-name {
-                    font-weight: 700;
-                    font-size: 15px;
-                }
-
-                .error-label {
-                    color: #c64600;
-                    font-size: 12px;
-                }
-
-                /* Status dots */
-                .status-icon { font-size: 20px; }
-                .status-available { color: #2ec27e; }
-                .status-low { color: #e5a50a; }
-                .status-exhausted { color: #e01b24; }
-                .status-error { color: #c64600; }
-                .status-unknown { color: #9a9996; }
-
-                /* Plan badges */
-                .plan-badge {
-                    font-size: 11px;
-                    font-weight: 600;
-                    padding: 2px 8px;
-                    border-radius: 9999px;
-                }
-                .plan-free {
-                    background: alpha(@accent_color, 0.15);
-                    color: @accent_color;
-                }
-                .plan-plus {
-                    background: alpha(#2ec27e, 0.15);
-                    color: #2ec27e;
-                }
-                .plan-pro {
-                    background: alpha(#e5a50a, 0.15);
-                    color: #e5a50a;
-                }
-                .plan-team {
-                    background: alpha(#3584e4, 0.15);
-                    color: #3584e4;
-                }
-
-                /* Progress bars */
-                progressbar trough {
-                    min-height: 8px;
-                    border-radius: 4px;
-                }
-                progressbar progress {
-                    min-height: 8px;
-                    border-radius: 4px;
-                }
-                .bar-available progress {
-                    background: #2ec27e;
-                }
-                .bar-low progress {
-                    background: #e5a50a;
-                }
-                .bar-exhausted progress {
-                    background: #e01b24;
-                }
-                .bar-exhausted trough {
-                    background: alpha(#e01b24, 0.15);
-                }
-
-                /* Overall status */
-                .overall-status {
-                    font-weight: 600;
-                    font-size: 13px;
-                }
-                .overall-available { color: #2ec27e; }
-                .overall-low { color: #e5a50a; }
-                .overall-exhausted { color: #e01b24; }
-
-                /* Percentage text */
-                .pct-available { color: #2ec27e; font-weight: 600; }
-                .pct-low { color: #e5a50a; font-weight: 600; }
-                .pct-exhausted { color: #e01b24; font-weight: 600; }
-
-                /* Reset countdown */
-                .reset-label {
-                    color: #9a9996;
-                    font-style: italic;
-                }
-
-                /* Flow box children should not add extra padding */
-                flowboxchild {
-                    padding: 0;
-                }
-            """;
-            css.load_from_data (css_data.data);
-            Gtk.StyleContext.add_provider_for_display (
-                Gdk.Display.get_default (),
-                css,
-                Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION
-            );
-        }
-
         private void populate_cards () {
-            // Clear
-            var child = flowbox.get_first_child ();
-            while (child != null) {
-                var next = child.get_next_sibling ();
-                flowbox.remove (child);
-                child = next;
+            if (pref_group != null) {
+                pref_page.remove (pref_group);
             }
+            pref_group = new Adw.PreferencesGroup ();
+            pref_page.add (pref_group);
+            
+            account_rows = new AccountRow[store.accounts.length];
 
             if (store.accounts.length == 0) {
                 main_stack.visible_child_name = "empty";
@@ -220,11 +103,12 @@ namespace CodexTracker {
             main_stack.visible_child_name = "cards";
 
             for (uint i = 0; i < store.accounts.length; i++) {
-                var card = new AccountCard (store.accounts[i], i);
-                card.refresh_requested.connect (on_refresh_single);
-                card.remove_requested.connect (on_remove_account);
-                card.rename_requested.connect (on_rename_account);
-                flowbox.append (card);
+                var row = new AccountRow (store.accounts[i], i);
+                row.refresh_requested.connect (on_refresh_single);
+                row.remove_requested.connect (on_remove_account);
+                row.rename_requested.connect (on_rename_account);
+                pref_group.add (row);
+                account_rows[i] = row;
             }
         }
 
@@ -244,21 +128,17 @@ namespace CodexTracker {
         }
 
         private void on_refresh_single (uint index) {
-            if (index >= store.accounts.length) return;
+            if (index >= store.accounts.length || index >= account_rows.length) return;
 
             var account = store.accounts[index];
-            var child = flowbox.get_child_at_index ((int) index);
-            if (child == null) return;
+            var row = account_rows[index];
 
-            var card = child.get_child () as AccountCard;
-            if (card == null) return;
-
-            card.set_loading (true);
+            row.set_loading (true);
 
             usage_checker.check_usage.begin (account, (obj, res) => {
                 usage_checker.check_usage.end (res);
-                card.update_display ();
-                card.set_loading (false);
+                row.update_display ();
+                row.set_loading (false);
                 store.save ();
             });
         }

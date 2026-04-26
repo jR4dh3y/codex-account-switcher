@@ -98,7 +98,6 @@ namespace CodexTracker {
 
             var retry_btn = new Gtk.Button.with_label ("Try Again");
             retry_btn.add_css_class ("suggested-action");
-            retry_btn.add_css_class ("pill");
             retry_btn.halign = Gtk.Align.CENTER;
             retry_btn.margin_top = 8;
             retry_btn.clicked.connect (() => {
