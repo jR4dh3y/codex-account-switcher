@@ -33,6 +33,8 @@ namespace CodexTracker {
 
             // Header bar
             var headerbar = new Adw.HeaderBar ();
+            headerbar.show_title = true;
+            headerbar.decoration_layout = "";
             var title = new Adw.WindowTitle ("Codex Tracker", "%u accounts".printf (store.accounts.length));
             headerbar.title_widget = title;
 
