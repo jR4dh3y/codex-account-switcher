@@ -1,0 +1,36 @@
+project('codex-tracker', 'vala', 'c',
+  version: '0.1.0',
+  meson_version: '>= 0.59.0',
+)
+
+gnome = import('gnome')
+
+# Dependencies
+gtk4_dep = dependency('gtk4', version: '>= 4.6')
+adw_dep = dependency('libadwaita-1', version: '>= 1.0')
+soup_dep = dependency('libsoup-3.0')
+json_dep = dependency('json-glib-1.0')
+
+dependencies = [
+  gtk4_dep,
+  adw_dep,
+  soup_dep,
+  json_dep,
+]
+
+sources = files(
+  'src/main.vala',
+  'src/application.vala',
+  'src/window.vala',
+  'src/account_card.vala',
+  'src/add_account_dialog.vala',
+  'src/auth_manager.vala',
+  'src/usage_checker.vala',
+  'src/account_store.vala',
+)
+
+executable('codex-tracker',
+  sources,
+  dependencies: dependencies,
+  install: true,
+)
