@@ -6,8 +6,8 @@ namespace CodexTracker {
         private AccountStore store;
         private AuthManager auth_manager;
         private UsageChecker usage_checker;
-        private Adw.PreferencesPage pref_page;
         private Adw.PreferencesGroup pref_group;
+        private Gtk.Box content_box;
         private Gtk.Stack main_stack;
         private AccountRow[] account_rows;
 
@@ -15,7 +15,7 @@ namespace CodexTracker {
             Object (
                 application: app,
                 title: "Codex Tracker",
-                default_width: 820,
+                default_width: 960,
                 default_height: 540
             );
 
@@ -54,6 +54,7 @@ namespace CodexTracker {
             // Main stack
             main_stack = new Gtk.Stack ();
             main_stack.transition_type = Gtk.StackTransitionType.CROSSFADE;
+            main_stack.vexpand = true;
 
             // Empty state
             var empty = new Adw.StatusPage ();
@@ -78,21 +79,38 @@ namespace CodexTracker {
             empty.child = empty_box;
             main_stack.add_named (empty, "empty");
 
-            // Preferences Page
-            pref_page = new Adw.PreferencesPage ();
-            main_stack.add_named (pref_page, "cards");
+            // Scrolled view with wider clamp (not PreferencesPage which caps at ~600px)
+            var scrolled = new Gtk.ScrolledWindow ();
+            scrolled.vexpand = true;
+            scrolled.hscrollbar_policy = Gtk.PolicyType.NEVER;
+
+            var clamp = new Adw.Clamp ();
+            clamp.maximum_size = 1200;
+            clamp.tightening_threshold = 800;
+            clamp.margin_top = 12;
+            clamp.margin_bottom = 12;
+            clamp.margin_start = 12;
+            clamp.margin_end = 12;
+
+            // Container box for the preferences group
+            content_box = new Gtk.Box (Gtk.Orientation.VERTICAL, 0);
+            content_box.valign = Gtk.Align.START;
+            clamp.child = content_box;
+            scrolled.child = clamp;
+            main_stack.add_named (scrolled, "cards");
 
             box.append (main_stack);
             set_content (box);
         }
 
         private void populate_cards () {
+            // Clear existing group
             if (pref_group != null) {
-                pref_page.remove (pref_group);
+                content_box.remove (pref_group);
             }
             pref_group = new Adw.PreferencesGroup ();
-            pref_page.add (pref_group);
-            
+            content_box.append (pref_group);
+
             account_rows = new AccountRow[store.accounts.length];
 
             if (store.accounts.length == 0) {
@@ -107,6 +125,7 @@ namespace CodexTracker {
                 row.refresh_requested.connect (on_refresh_single);
                 row.remove_requested.connect (on_remove_account);
                 row.rename_requested.connect (on_rename_account);
+                row.use_in_codex_requested.connect (on_use_in_codex);
                 pref_group.add (row);
                 account_rows[i] = row;
             }
@@ -141,6 +160,85 @@ namespace CodexTracker {
                 row.set_loading (false);
                 store.save ();
             });
+        }
+
+        private void on_use_in_codex (uint index) {
+            if (index >= store.accounts.length) return;
+
+            var account = store.accounts[index];
+            var dialog = new Adw.MessageDialog (this, "Switch Codex Account?", null);
+            dialog.body = "This will set \"%s\" as the active account in Codex CLI.\n\nAny running Codex session will need to be restarted.".printf (account.label);
+            dialog.add_response ("cancel", "Cancel");
+            dialog.add_response ("switch", "Switch Account");
+            dialog.set_response_appearance ("switch", Adw.ResponseAppearance.SUGGESTED);
+            dialog.response.connect ((response) => {
+                if (response == "switch") {
+                    write_codex_auth (account);
+                }
+            });
+            dialog.present ();
+        }
+
+        private void write_codex_auth (AccountData account) {
+            string codex_dir = Path.build_filename (Environment.get_home_dir (), ".codex");
+            string auth_file = Path.build_filename (codex_dir, "auth.json");
+
+            try {
+                DirUtils.create_with_parents (codex_dir, 0700);
+
+                // Build the auth.json in the format Codex CLI expects
+                var tokens_obj = new Json.Object ();
+                tokens_obj.set_string_member ("id_token", account.id_token);
+                tokens_obj.set_string_member ("access_token", account.access_token);
+                tokens_obj.set_string_member ("refresh_token", account.refresh_token);
+                tokens_obj.set_string_member ("account_id", account.account_id);
+
+                var root_obj = new Json.Object ();
+                root_obj.set_string_member ("auth_mode", "chatgpt");
+                root_obj.set_null_member ("OPENAI_API_KEY");
+
+                var tokens_node = new Json.Node (Json.NodeType.OBJECT);
+                tokens_node.set_object (tokens_obj);
+                root_obj.set_member ("tokens", tokens_node);
+
+                var now = new DateTime.now_utc ();
+                root_obj.set_string_member ("last_refresh", now.format_iso8601 ());
+
+                var root_node = new Json.Node (Json.NodeType.OBJECT);
+                root_node.set_object (root_obj);
+
+                var gen = new Json.Generator ();
+                gen.set_root (root_node);
+                gen.pretty = true;
+                gen.to_file (auth_file);
+                FileUtils.chmod (auth_file, 0600);
+
+                // Show success toast
+                var toast = new Adw.Toast ("Switched Codex to %s".printf (account.label));
+                toast.timeout = 3;
+                // Find or create toast overlay
+                show_toast (toast);
+
+            } catch (Error e) {
+                var err_dialog = new Adw.MessageDialog (this, "Error", null);
+                err_dialog.body = "Failed to write auth.json: %s".printf (e.message);
+                err_dialog.add_response ("ok", "OK");
+                err_dialog.present ();
+            }
+        }
+
+        private void show_toast (Adw.Toast toast) {
+            // Walk up from content to find toast overlay, or add one
+            var content = this.content;
+            if (content is Adw.ToastOverlay) {
+                ((Adw.ToastOverlay) content).add_toast (toast);
+            } else {
+                // Wrap content in toast overlay
+                var overlay = new Adw.ToastOverlay ();
+                overlay.child = content;
+                this.content = overlay;
+                overlay.add_toast (toast);
+            }
         }
 
         private void on_remove_account (uint index) {

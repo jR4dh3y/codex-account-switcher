@@ -19,6 +19,7 @@ namespace CodexTracker {
         public signal void refresh_requested (uint index);
         public signal void remove_requested (uint index);
         public signal void rename_requested (uint index);
+        public signal void use_in_codex_requested (uint index);
 
         public AccountRow (AccountData account, uint index) {
             Object ();
@@ -88,6 +89,11 @@ namespace CodexTracker {
             var btn_rename = new Gtk.Button.with_label ("Rename");
             btn_rename.clicked.connect (() => rename_requested (account_index));
             actions_box.append (btn_rename);
+
+            var btn_use = new Gtk.Button.with_label ("Use in Codex");
+            btn_use.add_css_class ("suggested-action");
+            btn_use.clicked.connect (() => use_in_codex_requested (account_index));
+            actions_box.append (btn_use);
             
             var btn_details = new Gtk.Button.with_label ("API Response");
             btn_details.clicked.connect (show_details);
