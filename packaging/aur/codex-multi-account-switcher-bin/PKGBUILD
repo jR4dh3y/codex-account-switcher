@@ -18,7 +18,7 @@ conflicts=('codex-multi-account-switcher')
 source=(
   "${pkgname}-${pkgver}.tar.zst::${url}/releases/download/v${pkgver}/codex-multi-account-switcher-${pkgver}-x86_64.tar.zst"
 )
-sha256sums=('SKIP')
+sha256sums=('c146968f8a7f0ce3da466199f66b6635a2697c968eeaee38dc8225071e999327')
 
 package() {
   install -d "${pkgdir}"
