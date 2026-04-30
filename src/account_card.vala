@@ -9,7 +9,9 @@ namespace CodexTracker {
         private Adw.Avatar avatar;
         private Gtk.ProgressBar primary_bar;
         private Gtk.Label primary_pct;
-        
+        private Gtk.Box active_badge;
+        private Gtk.Button btn_use;
+
         private Adw.ActionRow error_row;
         private Gtk.Label error_label;
 
@@ -42,13 +44,29 @@ namespace CodexTracker {
             spinner = new Gtk.Spinner ();
             suffix_box.append (spinner);
 
+            // Active badge (hidden by default)
+            active_badge = new Gtk.Box (Gtk.Orientation.HORIZONTAL, 4);
+            active_badge.valign = Gtk.Align.CENTER;
+            active_badge.visible = false;
+
+            var active_icon = new Gtk.Image.from_icon_name ("emblem-ok-symbolic");
+            active_icon.add_css_class ("success");
+            active_badge.append (active_icon);
+
+            var active_label = new Gtk.Label ("Active");
+            active_label.add_css_class ("caption");
+            active_label.add_css_class ("success");
+            active_badge.append (active_label);
+
+            suffix_box.append (active_badge);
+
             var progress_box = new Gtk.Box (Gtk.Orientation.HORIZONTAL, 6);
             progress_box.valign = Gtk.Align.CENTER;
-            
+
             primary_bar = new Gtk.ProgressBar ();
             primary_bar.valign = Gtk.Align.CENTER;
             primary_bar.width_request = 100;
-            
+
             primary_pct = new Gtk.Label ("0%");
             primary_pct.width_chars = 4;
             primary_pct.halign = Gtk.Align.END;
@@ -90,7 +108,7 @@ namespace CodexTracker {
             btn_rename.clicked.connect (() => rename_requested (account_index));
             actions_box.append (btn_rename);
 
-            var btn_use = new Gtk.Button.with_label ("Use in Codex");
+            btn_use = new Gtk.Button.with_label ("Use in Codex");
             btn_use.add_css_class ("suggested-action");
             btn_use.clicked.connect (() => use_in_codex_requested (account_index));
             actions_box.append (btn_use);
@@ -188,6 +206,19 @@ namespace CodexTracker {
             } else {
                 btn_refresh.label = "Refresh";
                 btn_refresh.sensitive = true;
+            }
+        }
+
+        public void set_active (bool active) {
+            active_badge.visible = active;
+            if (active) {
+                btn_use.label = "Active";
+                btn_use.sensitive = false;
+                btn_use.remove_css_class ("suggested-action");
+            } else {
+                btn_use.label = "Use in Codex";
+                btn_use.sensitive = true;
+                btn_use.add_css_class ("suggested-action");
             }
         }
 

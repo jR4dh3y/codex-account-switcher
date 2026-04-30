@@ -11,6 +11,9 @@ permissions:
 jobs:
   build-release-archive:
     runs-on: ubuntu-24.04
+    outputs:
+      sha256: ${{ steps.checksum.outputs.sha256 }}
+      version: ${{ steps.version.outputs.version }}
 
     steps:
       - name: Check out repository
@@ -43,3 +46,51 @@ jobs:
           files: |
             dist/*.tar.zst
             dist/*.tar.zst.sha256
+
+      - name: Extract version
+        id: version
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+      - name: Extract checksum
+        id: checksum
+        run: |
+          sha256=$(awk '{print $1}' dist/*.tar.zst.sha256)
+          echo "sha256=$sha256" >> "$GITHUB_OUTPUT"
+
+  deploy-aur:
+    needs: build-release-archive
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Update AUR packaging files
+        env:
+          VERSION: ${{ needs.build-release-archive.outputs.version }}
+          CHECKSUM: ${{ needs.build-release-archive.outputs.sha256 }}
+        run: |
+          pkgdir="packaging/aur/codex-multi-account-switcher-bin"
+
+          # Update PKGBUILD
+          sed -i "s/^pkgver=.*/pkgver=${VERSION}/" "${pkgdir}/PKGBUILD"
+          sed -i "s/^sha256sums=.*/sha256sums=('${CHECKSUM}')/" "${pkgdir}/PKGBUILD"
+
+          # Update .SRCINFO
+          sed -i "s/^pkgver = .*/pkgver = ${VERSION}/" "${pkgdir}/.SRCINFO"
+          sed -i "s/^sha256sums = .*/sha256sums = ${CHECKSUM}/" "${pkgdir}/.SRCINFO"
+          sed -i "s/codex-multi-account-switcher-bin-[0-9]\+\.[0-9]\+\.[0-9]\+\.tar\.zst/codex-multi-account-switcher-bin-${VERSION}.tar.zst/g" "${pkgdir}/.SRCINFO"
+          sed -i "s|/v[0-9]\+\.[0-9]\+\.[0-9]\+/|/v${VERSION}/|g" "${pkgdir}/.SRCINFO"
+          sed -i "s|codex-account-switcher-[0-9]\+\.[0-9]\+\.[0-9]\+-x86_64|codex-account-switcher-${VERSION}-x86_64|g" "${pkgdir}/.SRCINFO"
+
+      - name: Deploy to AUR
+        uses: KSXGitHub/github-actions-deploy-aur@v2.7.0
+        with:
+          pkgname: codex-multi-account-switcher-bin
+          pkgbuild: packaging/aur/codex-multi-account-switcher-bin/PKGBUILD
+          srcinfo: packaging/aur/codex-multi-account-switcher-bin/.SRCINFO
+          commit_username: ${{ github.actor }}
+          commit_email: ${{ github.actor }}@users.noreply.github.com
+          ssh_private_key: ${{ secrets.AUR_SSH_PRIVATE_KEY }}
+          commit_message: 'Update to v${{ needs.build-release-archive.outputs.version }}'

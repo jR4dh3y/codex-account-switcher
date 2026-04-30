@@ -7,7 +7,7 @@ BUILD_DIR="${ROOT_DIR}/build-release"
 DIST_DIR="${ROOT_DIR}/dist"
 VERSION="${1:-}"
 ARCHITECTURE="${2:-$(uname -m)}"
-ARCHIVE_STEM="codex-multi-account-switcher-${VERSION}-${ARCHITECTURE}"
+ARCHIVE_STEM="codex-account-switcher-${VERSION}-${ARCHITECTURE}"
 STAGE_DIR="${DIST_DIR}/${ARCHIVE_STEM}"
 ARCHIVE_PATH="${DIST_DIR}/${ARCHIVE_STEM}.tar.zst"
 
@@ -29,7 +29,7 @@ meson compile -C "${BUILD_DIR}"
 DESTDIR="${STAGE_DIR}" meson install -C "${BUILD_DIR}" --no-rebuild
 
 install -Dm644 "${ROOT_DIR}/LICENSE" \
-  "${STAGE_DIR}/usr/share/licenses/codex-multi-account-switcher/LICENSE"
+  "${STAGE_DIR}/usr/share/licenses/codex-account-switcher/LICENSE"
 
 tar --zstd -cf "${ARCHIVE_PATH}" -C "${DIST_DIR}" "${ARCHIVE_STEM}"
 sha256sum "${ARCHIVE_PATH}" > "${ARCHIVE_PATH}.sha256"
