@@ -8,6 +8,10 @@ on:
 permissions:
   contents: write
 
+env:
+  AUR_PKGNAME: codex-account-switcher-bin
+  RELEASE_ARCHIVE_NAME: codex-account-switcher
+
 jobs:
   build-release-archive:
     runs-on: ubuntu-24.04
@@ -71,26 +75,53 @@ jobs:
           VERSION: ${{ needs.build-release-archive.outputs.version }}
           CHECKSUM: ${{ needs.build-release-archive.outputs.sha256 }}
         run: |
-          pkgdir="packaging/aur/codex-multi-account-switcher-bin"
+          pkgdir="packaging/aur/${AUR_PKGNAME}"
 
           # Update PKGBUILD
           sed -i "s/^pkgver=.*/pkgver=${VERSION}/" "${pkgdir}/PKGBUILD"
           sed -i "s/^sha256sums=.*/sha256sums=('${CHECKSUM}')/" "${pkgdir}/PKGBUILD"
 
           # Update .SRCINFO
-          sed -i "s/^pkgver = .*/pkgver = ${VERSION}/" "${pkgdir}/.SRCINFO"
-          sed -i "s/^sha256sums = .*/sha256sums = ${CHECKSUM}/" "${pkgdir}/.SRCINFO"
-          sed -i "s/codex-multi-account-switcher-bin-[0-9]\+\.[0-9]\+\.[0-9]\+\.tar\.zst/codex-multi-account-switcher-bin-${VERSION}.tar.zst/g" "${pkgdir}/.SRCINFO"
+          sed -i "s/^\([[:space:]]*pkgver = \).*/\1${VERSION}/" "${pkgdir}/.SRCINFO"
+          sed -i "s/^\([[:space:]]*sha256sums = \).*/\1${CHECKSUM}/" "${pkgdir}/.SRCINFO"
+          sed -i "s/${AUR_PKGNAME}-[0-9]\+\.[0-9]\+\.[0-9]\+\.tar\.zst/${AUR_PKGNAME}-${VERSION}.tar.zst/g" "${pkgdir}/.SRCINFO"
           sed -i "s|/v[0-9]\+\.[0-9]\+\.[0-9]\+/|/v${VERSION}/|g" "${pkgdir}/.SRCINFO"
-          sed -i "s|codex-account-switcher-[0-9]\+\.[0-9]\+\.[0-9]\+-x86_64|codex-account-switcher-${VERSION}-x86_64|g" "${pkgdir}/.SRCINFO"
+          sed -i "s|${RELEASE_ARCHIVE_NAME}-[0-9]\+\.[0-9]\+\.[0-9]\+-x86_64|${RELEASE_ARCHIVE_NAME}-${VERSION}-x86_64|g" "${pkgdir}/.SRCINFO"
+
+      - name: Configure AUR SSH key
+        env:
+          AUR_SSH_PRIVATE_KEY: ${{ secrets.AUR_SSH_PRIVATE_KEY }}
+        run: |
+          mkdir -p "${HOME}/.ssh"
+          printf '%s\n' "${AUR_SSH_PRIVATE_KEY}" > "${HOME}/.ssh/aur"
+          chmod 600 "${HOME}/.ssh/aur"
+          ssh-keyscan -t rsa,ecdsa,ed25519 aur.archlinux.org >> "${HOME}/.ssh/known_hosts"
 
       - name: Deploy to AUR
-        uses: KSXGitHub/github-actions-deploy-aur@v2.7.0
-        with:
-          pkgname: codex-multi-account-switcher-bin
-          pkgbuild: packaging/aur/codex-multi-account-switcher-bin/PKGBUILD
-          srcinfo: packaging/aur/codex-multi-account-switcher-bin/.SRCINFO
-          commit_username: ${{ github.actor }}
-          commit_email: ${{ github.actor }}@users.noreply.github.com
-          ssh_private_key: ${{ secrets.AUR_SSH_PRIVATE_KEY }}
-          commit_message: 'Update to v${{ needs.build-release-archive.outputs.version }}'
+        env:
+          VERSION: ${{ needs.build-release-archive.outputs.version }}
+          GIT_SSH_COMMAND: ssh -i ~/.ssh/aur -o IdentitiesOnly=yes
+        run: |
+          aur_remote="ssh://aur@aur.archlinux.org/${AUR_PKGNAME}.git"
+
+          if ! git clone "${aur_remote}" aur-package; then
+            mkdir aur-package
+            git -C aur-package init
+            git -C aur-package remote add origin "${aur_remote}"
+          fi
+
+          cp "packaging/aur/${AUR_PKGNAME}/PKGBUILD" aur-package/PKGBUILD
+          cp "packaging/aur/${AUR_PKGNAME}/.SRCINFO" aur-package/.SRCINFO
+
+          cd aur-package
+          git config user.name "${GITHUB_ACTOR}"
+          git config user.email "${GITHUB_ACTOR}@users.noreply.github.com"
+          git add PKGBUILD .SRCINFO
+
+          if git diff --cached --quiet; then
+            echo "AUR package is already up to date."
+            exit 0
+          fi
+
+          git commit -m "Update to v${VERSION}"
+          git push origin HEAD:master
