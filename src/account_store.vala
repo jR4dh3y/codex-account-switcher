@@ -162,6 +162,35 @@ namespace CodexTracker {
             accounts = new GenericArray<AccountData> ();
         }
 
+        public static string? get_active_codex_account_id () {
+            string auth_file = Path.build_filename (Environment.get_home_dir (), ".codex", "auth.json");
+            if (!FileUtils.test (auth_file, FileTest.EXISTS))
+                return null;
+
+            try {
+                string contents;
+                FileUtils.get_contents (auth_file, out contents);
+
+                var parser = new Json.Parser ();
+                parser.load_from_data (contents);
+
+                var root = parser.get_root ();
+                if (root == null || root.get_node_type () != Json.NodeType.OBJECT)
+                    return null;
+
+                var obj = root.get_object ();
+                if (!obj.has_member ("tokens"))
+                    return null;
+
+                var tokens = obj.get_object_member ("tokens");
+                if (tokens.has_member ("account_id"))
+                    return tokens.get_string_member ("account_id");
+            } catch (Error e) {
+                warning ("Failed to read active Codex account: %s", e.message);
+            }
+            return null;
+        }
+
         public void load () {
             accounts = new GenericArray<AccountData> ();
 

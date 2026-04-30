@@ -1,10 +1,10 @@
-# Codex Multi-Account Switcher
+# Codex Account Switcher
 
 GTK/libadwaita app for managing multiple ChatGPT accounts for Codex CLI.
 
-![Codex Multi-Account Switcher screenshot](assets/screenshot.png)
+![Codex Account Switcher screenshot](assets/screenshot.png)
 
-Codex Multi-Account Switcher uses OpenAI's browser-based OAuth flow to add ChatGPT accounts without API keys. It checks Codex usage for each account, shows how much quota is left, shows when limits reset, and can write the selected account to Codex CLI's `~/.codex/auth.json`.
+Codex Account Switcher uses OpenAI's browser-based OAuth flow to add ChatGPT accounts without API keys. It checks Codex usage for each account, shows how much quota is left, shows when limits reset, and can write the selected account to Codex CLI's `~/.codex/auth.json`.
 
 ## Features
 

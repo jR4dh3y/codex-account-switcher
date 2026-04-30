@@ -9,12 +9,13 @@ namespace CodexTracker {
         private Adw.PreferencesGroup pref_group;
         private Gtk.Box content_box;
         private Gtk.Stack main_stack;
+        private Adw.ToastOverlay toast_overlay;
         private AccountRow[] account_rows;
 
         public MainWindow (Gtk.Application app) {
             Object (
                 application: app,
-                title: "Codex Multi-Account Switcher",
+                title: "Codex Account Switcher",
                 default_width: 960,
                 default_height: 540
             );
@@ -35,7 +36,7 @@ namespace CodexTracker {
             var headerbar = new Adw.HeaderBar ();
             headerbar.show_title = true;
             headerbar.decoration_layout = "";
-            var title = new Adw.WindowTitle ("Codex Multi-Account Switcher", "%u accounts".printf (store.accounts.length));
+            var title = new Adw.WindowTitle ("Codex Account Switcher", "%u accounts".printf (store.accounts.length));
             headerbar.title_widget = title;
 
             // Add account button
@@ -102,7 +103,10 @@ namespace CodexTracker {
             main_stack.add_named (scrolled, "cards");
 
             box.append (main_stack);
-            set_content (box);
+
+            toast_overlay = new Adw.ToastOverlay ();
+            toast_overlay.child = box;
+            set_content (toast_overlay);
         }
 
         private void populate_cards () {
@@ -130,6 +134,17 @@ namespace CodexTracker {
                 row.use_in_codex_requested.connect (on_use_in_codex);
                 pref_group.add (row);
                 account_rows[i] = row;
+            }
+
+            refresh_active_indicators ();
+        }
+
+        private void refresh_active_indicators () {
+            string? active_id = AccountStore.get_active_codex_account_id ();
+            for (uint i = 0; i < account_rows.length; i++) {
+                var row = account_rows[i];
+                bool is_active = active_id != null && row.account.account_id == active_id;
+                row.set_active (is_active);
             }
         }
 
@@ -215,10 +230,12 @@ namespace CodexTracker {
                 gen.to_file (auth_file);
                 FileUtils.chmod (auth_file, 0600);
 
+                // Update active indicators
+                refresh_active_indicators ();
+
                 // Show success toast
                 var toast = new Adw.Toast ("Switched Codex to %s".printf (account.label));
                 toast.timeout = 3;
-                // Find or create toast overlay
                 show_toast (toast);
 
             } catch (Error e) {
@@ -230,17 +247,7 @@ namespace CodexTracker {
         }
 
         private void show_toast (Adw.Toast toast) {
-            // Walk up from content to find toast overlay, or add one
-            var content = this.content;
-            if (content is Adw.ToastOverlay) {
-                ((Adw.ToastOverlay) content).add_toast (toast);
-            } else {
-                // Wrap content in toast overlay
-                var overlay = new Adw.ToastOverlay ();
-                overlay.child = content;
-                this.content = overlay;
-                overlay.add_toast (toast);
-            }
+            toast_overlay.add_toast (toast);
         }
 
         private void on_remove_account (uint index) {

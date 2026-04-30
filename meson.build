@@ -1,5 +1,5 @@
-project('codex-multi-account-switcher', 'vala', 'c',
-  version: '0.1.0',
+project('codex-account-switcher', 'vala', 'c',
+  version: '0.2.0',
   license: 'MIT',
   meson_version: '>= 0.59.0',
 )
@@ -30,7 +30,7 @@ sources = files(
   'src/account_store.vala',
 )
 
-executable('codex-multi-account-switcher',
+executable('codex-account-switcher',
   sources,
   dependencies: dependencies,
   install: true,
