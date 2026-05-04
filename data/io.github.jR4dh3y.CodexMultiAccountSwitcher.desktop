@@ -3,6 +3,7 @@ Type=Application
 Name=Codex Account Switcher
 Comment=Switch between ChatGPT accounts for Codex CLI
 Exec=codex-account-switcher
+Icon=io.github.jR4dh3y.CodexMultiAccountSwitcher
 Terminal=false
 Categories=Utility;GTK;
 StartupNotify=true

@@ -1,5 +1,5 @@
 project('codex-account-switcher', 'vala', 'c',
-  version: '0.2.2',
+  version: '0.2.3',
   license: 'MIT',
   meson_version: '>= 0.59.0',
 )
@@ -40,3 +40,12 @@ install_data(
   'data/io.github.jR4dh3y.CodexMultiAccountSwitcher.desktop',
   install_dir: join_paths(get_option('datadir'), 'applications'),
 )
+
+# Install app icons
+icon_sizes = ['128x128', '256x256', '512x512']
+foreach size : icon_sizes
+  install_data(
+    'data/icons/hicolor' / size / 'apps' / 'io.github.jR4dh3y.CodexAccountSwitcher.png',
+    install_dir: join_paths(get_option('datadir'), 'icons', 'hicolor', size, 'apps'),
+  )
+endforeach
