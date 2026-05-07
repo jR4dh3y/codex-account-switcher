@@ -4,8 +4,10 @@ namespace CodexTracker {
 
     public class Application : Adw.Application {
         public Application () {
+            Gtk.Window.set_default_icon_name ("io.github.jR4dh3y.CodexAccountSwitcher");
+
             Object (
-                application_id: "io.github.jR4dh3y.CodexMultiAccountSwitcher",
+                application_id: "io.github.jR4dh3y.CodexAccountSwitcher",
                 flags: ApplicationFlags.FLAGS_NONE
             );
         }

@@ -14,6 +14,14 @@ namespace CodexTracker {
 
         private Adw.ActionRow error_row;
         private Gtk.Label error_label;
+        private Adw.ActionRow five_hour_usage_row;
+        private Gtk.ProgressBar five_hour_bar;
+        private Gtk.Label five_hour_pct;
+        private Gtk.Label five_hour_reset;
+        private Adw.ActionRow weekly_usage_row;
+        private Gtk.ProgressBar weekly_bar;
+        private Gtk.Label weekly_pct;
+        private Gtk.Label weekly_reset;
 
         public AccountData account { get; private set; }
         public uint account_index { get; set; }
@@ -33,6 +41,8 @@ namespace CodexTracker {
         }
 
         private void build_ui () {
+            this.use_markup = true;
+
             // Prefix: Avatar
             avatar = new Adw.Avatar (40, "", true);
             add_prefix (avatar);
@@ -49,7 +59,8 @@ namespace CodexTracker {
             active_badge.valign = Gtk.Align.CENTER;
             active_badge.visible = false;
 
-            var active_icon = new Gtk.Image.from_icon_name ("emblem-ok-symbolic");
+            var active_icon = new Gtk.Image.from_icon_name ("object-select-symbolic");
+            active_icon.pixel_size = 16;
             active_icon.add_css_class ("success");
             active_badge.append (active_icon);
 
@@ -93,6 +104,22 @@ namespace CodexTracker {
             error_row.add_prefix (error_label);
             add_row (error_row);
 
+            five_hour_usage_row = create_usage_row (
+                "5h usage",
+                out five_hour_bar,
+                out five_hour_pct,
+                out five_hour_reset
+            );
+            add_row (five_hour_usage_row);
+
+            weekly_usage_row = create_usage_row (
+                "Weekly usage",
+                out weekly_bar,
+                out weekly_pct,
+                out weekly_reset
+            );
+            add_row (weekly_usage_row);
+
             // Actions row (expandable part)
             var actions_row = new Adw.ActionRow ();
             actions_row.title = "Actions";
@@ -126,42 +153,85 @@ namespace CodexTracker {
             add_row (actions_row);
         }
 
+        private Adw.ActionRow create_usage_row (
+            string title,
+            out Gtk.ProgressBar bar,
+            out Gtk.Label pct,
+            out Gtk.Label reset
+        ) {
+            var row = new Adw.ActionRow ();
+            row.title = title;
+            row.visible = false;
+
+            var usage_box = new Gtk.Box (Gtk.Orientation.HORIZONTAL, 8);
+            usage_box.valign = Gtk.Align.CENTER;
+
+            bar = new Gtk.ProgressBar ();
+            bar.valign = Gtk.Align.CENTER;
+            bar.width_request = 140;
+            usage_box.append (bar);
+
+            pct = new Gtk.Label ("0%");
+            pct.width_chars = 4;
+            pct.halign = Gtk.Align.END;
+            usage_box.append (pct);
+
+            reset = new Gtk.Label ("");
+            reset.add_css_class ("caption");
+            reset.width_chars = 16;
+            reset.halign = Gtk.Align.START;
+            usage_box.append (reset);
+
+            row.add_suffix (usage_box);
+            return row;
+        }
+
         public void update_display () {
             string display_name = account.label != "" ? account.label : "Account";
-            this.title = display_name;
+            this.title = "%s  %s".printf (
+                Markup.escape_text (display_name),
+                get_plan_markup ()
+            );
             if (avatar != null) {
                 avatar.text = display_name;
             }
             
             // Subtitle string building
-            string plan = account.plan_type;
-            if (plan == "" || plan == "unknown")
-                plan = "?";
-            else
-                plan = plan.substring (0, 1).up () + plan.substring (1);
-            
-            string sub = plan;
-            if (account.email != "" && account.email != display_name) {
-                sub = account.email + " • " + plan;
+            string sub = account.email != "" && account.email != display_name ? account.email : "";
+
+            bool has_paid_usage_summary = false;
+            if (is_plus_or_pro_plan ()) {
+                UsageWindow? five_hour = find_usage_window_by_seconds (5 * 60 * 60);
+                UsageWindow? weekly = find_usage_window_by_seconds (7 * 24 * 60 * 60);
+
+                if (five_hour != null) {
+                    sub = append_subtitle_part (sub, "5h %.0f%% left".printf (five_hour.percent_left));
+                    has_paid_usage_summary = true;
+                }
+
+                if (weekly != null) {
+                    sub = append_subtitle_part (sub, "Weekly %.0f%% left".printf (weekly.percent_left));
+                    has_paid_usage_summary = true;
+                }
             }
 
             // Handle usage windows
             if (account.usage_windows.length > 0) {
-                var primary = account.usage_windows[0];
+                var primary = get_header_usage_window ();
                 double fraction = primary.percent_left / 100.0;
                 primary_bar.fraction = double.min (1.0, double.max (0.0, fraction));
                 primary_pct.label = "%.0f%%".printf (primary.percent_left);
 
                 string countdown = primary.get_reset_countdown ();
-                if (countdown != "") {
+                if (countdown != "" && !has_paid_usage_summary) {
                     string clean_reset = countdown;
                     if (clean_reset.has_prefix ("Resets ")) {
                         clean_reset = clean_reset.substring (7);
                     }
                     if (clean_reset.index_of ("Reset") == -1) {
-                        sub += " • Resets " + clean_reset;
+                        sub = append_subtitle_part (sub, "Resets " + clean_reset);
                     } else {
-                        sub += " • " + clean_reset;
+                        sub = append_subtitle_part (sub, clean_reset);
                     }
                 }
 
@@ -186,6 +256,8 @@ namespace CodexTracker {
                 primary_pct.visible = false;
             }
 
+            update_paid_usage_rows ();
+
             this.subtitle = sub;
 
             // Error handling
@@ -195,6 +267,126 @@ namespace CodexTracker {
             } else {
                 error_row.visible = false;
             }
+        }
+
+        private void update_paid_usage_rows () {
+            bool show_paid_windows = is_plus_or_pro_plan ();
+            UsageWindow? five_hour = find_usage_window_by_seconds (5 * 60 * 60);
+            UsageWindow? weekly = find_usage_window_by_seconds (7 * 24 * 60 * 60);
+
+            five_hour_usage_row.visible = show_paid_windows && five_hour != null;
+            weekly_usage_row.visible = show_paid_windows && weekly != null;
+
+            if (five_hour != null)
+                update_usage_row (five_hour_bar, five_hour_pct, five_hour_reset, five_hour);
+            if (weekly != null)
+                update_usage_row (weekly_bar, weekly_pct, weekly_reset, weekly);
+        }
+
+        private UsageWindow get_header_usage_window () {
+            if (is_plus_or_pro_plan ()) {
+                UsageWindow? five_hour = find_usage_window_by_seconds (5 * 60 * 60);
+                if (five_hour != null)
+                    return five_hour;
+            }
+
+            return account.usage_windows[0];
+        }
+
+        private UsageWindow? find_usage_window_by_seconds (int target_seconds) {
+            for (uint i = 0; i < account.usage_windows.length; i++) {
+                var window = account.usage_windows[i];
+                int diff = window.limit_window_seconds - target_seconds;
+                if (diff < 0)
+                    diff = -diff;
+
+                if (diff <= 60)
+                    return window;
+            }
+
+            return null;
+        }
+
+        private string append_subtitle_part (string subtitle, string part) {
+            if (subtitle == "")
+                return part;
+
+            return subtitle + " • " + part;
+        }
+
+        private string get_plan_markup () {
+            string plan = normalize_plan_type ();
+            string color = get_plan_color (plan);
+            return "<span foreground=\"%s\">%s</span>".printf (
+                color,
+                Markup.escape_text (plan)
+            );
+        }
+
+        private string normalize_plan_type () {
+            string plan = account.plan_type.strip ();
+            if (plan == "" || plan.down () == "unknown")
+                return "?";
+
+            return plan.substring (0, 1).up () + plan.substring (1).down ();
+        }
+
+        private string get_plan_color (string normalized_plan) {
+            switch (normalized_plan.down ()) {
+                case "free":
+                    return "#8e8e93";
+                case "go":
+                    return "#2e7d32";
+                case "plus":
+                    return "#1c71d8";
+                case "pro":
+                    return "#9141ac";
+                default:
+                    return "#8e8e93";
+            }
+        }
+
+        private bool is_plus_or_pro_plan () {
+            string plan = account.plan_type.down ();
+            return plan == "plus"
+                || plan == "pro"
+                || plan.index_of ("plus") >= 0
+                || plan.index_of ("pro") >= 0;
+        }
+
+        private void update_usage_row (
+            Gtk.ProgressBar bar,
+            Gtk.Label pct,
+            Gtk.Label reset,
+            UsageWindow window
+        ) {
+            double fraction = window.percent_left / 100.0;
+            bar.fraction = double.min (1.0, double.max (0.0, fraction));
+            pct.label = "%.0f%%".printf (window.percent_left);
+            reset.label = clean_reset_label (window.get_reset_countdown ());
+
+            bar.remove_css_class ("error");
+            pct.remove_css_class ("error");
+            bar.remove_css_class ("warning");
+            pct.remove_css_class ("warning");
+
+            if (window.percent_left <= 0) {
+                bar.add_css_class ("error");
+                pct.add_css_class ("error");
+            } else if (window.percent_left <= 20) {
+                bar.add_css_class ("warning");
+                pct.add_css_class ("warning");
+            }
+        }
+
+        private string clean_reset_label (string countdown) {
+            if (countdown == "")
+                return "";
+
+            if (countdown.has_prefix ("Resets "))
+                return countdown.substring (7);
+
+            return countdown;
         }
 
         public void set_loading (bool loading) {

@@ -1,5 +1,7 @@
 # Codex Account Switcher
 
+<img src="data/icons/hicolor/128x128/apps/io.github.jR4dh3y.CodexAccountSwitcher.png" alt="Codex Account Switcher icon" width="96" height="96">
+
 GTK/libadwaita app for managing multiple ChatGPT accounts for Codex CLI.
 
 ![Codex Account Switcher screenshot](assets/screenshot.png)
@@ -25,5 +27,5 @@ meson install -C build
 ## Release archive
 
 ```sh
-./scripts/build-release-archive.sh 0.2.2
+./scripts/build-release-archive.sh 0.2.4
 ```

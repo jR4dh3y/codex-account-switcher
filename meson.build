@@ -1,5 +1,5 @@
 project('codex-account-switcher', 'vala', 'c',
-  version: '0.2.3',
+  version: '0.2.4',
   license: 'MIT',
   meson_version: '>= 0.59.0',
 )
@@ -37,7 +37,7 @@ executable('codex-account-switcher',
 )
 
 install_data(
-  'data/io.github.jR4dh3y.CodexMultiAccountSwitcher.desktop',
+  'data/io.github.jR4dh3y.CodexAccountSwitcher.desktop',
   install_dir: join_paths(get_option('datadir'), 'applications'),
 )
 
@@ -49,3 +49,8 @@ foreach size : icon_sizes
     install_dir: join_paths(get_option('datadir'), 'icons', 'hicolor', size, 'apps'),
   )
 endforeach
+
+gnome.post_install(
+  gtk_update_icon_cache: true,
+  update_desktop_database: true,
+)
